@@ -16,17 +16,43 @@ sshpass -p 'Juniper!1' ssh $SSH_OPTS root@$TARGET_MGMT \
 sshpass -p 'Juniper!1' ssh $SSH_OPTS root@$TARGET_MGMT \
     "firewall-cmd --add-port=80/tcp --zone=public --permanent --quiet; firewall-cmd --reload --quiet" 2>/dev/null
 
-# Create a simple demo page
-sshpass -p 'Juniper!1' ssh $SSH_OPTS root@$TARGET_MGMT "cat > /tmp/index.html << 'HTML'
+# Create demo pages
+sshpass -p 'Juniper!1' ssh $SSH_OPTS root@$TARGET_MGMT "
+mkdir -p /tmp/www
+
+cat > /tmp/www/index.html << 'HTML'
 <html>
 <body>
 <h1>Demo Target Server</h1>
-<p>User login: <a href=\"/login?user=admin&pass=secret\">/login</a></p>
-<p>Items: <a href=\"/items?id=1\">/items?id=1</a></p>
+<p>User login: <a href=\"/login.html?user=admin\">/login.html?user=admin</a></p>
+<p>Items: <a href=\"/items.html?id=1\">/items.html?id=1</a></p>
 </body>
 </html>
 HTML
-mkdir -p /tmp/www && cp /tmp/index.html /tmp/www/
+
+cat > /tmp/www/items.html << 'HTML'
+<html>
+<body>
+<h1>Items</h1>
+<p>Showing item id: 1</p>
+<p>Name: Widget</p>
+<p>Price: 9.99</p>
+</body>
+</html>
+HTML
+
+cat > /tmp/www/login.html << 'HTML'
+<html>
+<body>
+<h1>Login</h1>
+<form method='get'>
+<input name='user' value='admin'>
+<input type='password' name='pass'>
+<input type='submit' value='Login'>
+</form>
+</body>
+</html>
+HTML
 " 2>/dev/null
 
 # Start web server in background

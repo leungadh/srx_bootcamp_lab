@@ -12,7 +12,7 @@ set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match 
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match source-address any
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match destination-address any
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match attacks predefined-attack-groups "HTTP - All"
-set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS then action drop-connection
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS then action recommended
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match from-zone untrust
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match to-zone trust
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match source-address any
@@ -26,8 +26,10 @@ exit
 ' | sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$SRX1 2>/dev/null
 
 echo ""
-echo "=== Waiting for IDP policy to load (~20s) ==="
-sleep 20
+echo "=== Waiting for IDP-DEMO policy to load... ==="
+until sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$SRX1 "show security idp status" 2>/dev/null | grep -q "Policy Name : IDP-DEMO"; do
+  sleep 5
+done
 
 echo ""
 echo "=== IDP status ==="

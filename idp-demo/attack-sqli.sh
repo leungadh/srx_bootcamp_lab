@@ -18,7 +18,7 @@ echo "Starting SQL injection probe..."
 echo ""
 
 sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$KALI \
-    "sqlmap -u 'http://${TARGET}/items?id=1' \
+    "sqlmap -u 'http://${TARGET}/items.html?id=1' \
      --level=2 --risk=2 \
      --technique=BEUST \
      --batch \

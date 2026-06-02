@@ -7,8 +7,7 @@ SRX1="100.123.12.0"
 echo "=== Removing IDP policy from vSRX1 ==="
 
 printf 'configure
-delete security idp active-policy
-delete security idp idp-policy IDP-DEMO
+delete security idp
 delete security policies from-zone untrust to-zone trust policy permit-all then permit application-services idp
 commit
 exit
