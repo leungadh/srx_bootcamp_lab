@@ -6,7 +6,7 @@ SRX1="100.123.12.0"
 INTERVAL=${1:-3}
 
 clear_stats() {
-    sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$SRX1 "clear security idp attack-table" 2>/dev/null
+    sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$SRX1 "clear security idp attack table" 2>/dev/null
     echo ">>> IDP attack table cleared"
 }
 
@@ -14,7 +14,7 @@ show_stats() {
     echo "=========================================="
     echo " vSRX1 IDP Attack Table — $(date '+%H:%M:%S')"
     echo "=========================================="
-    sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$SRX1 "show security idp attack-table" 2>/dev/null
+    sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$SRX1 "show security idp attack table" 2>/dev/null
     echo ""
     echo "--- IDP Statistics ---"
     sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$SRX1 "show security idp statistics" 2>/dev/null | grep -E "Packet|Attack|Drop|TCP|UDP"

