@@ -25,10 +25,14 @@ Kali (192.168.10.2) eth1
 
 | Signature | Hits (typical) | What it catches |
 |-----------|---------------|-----------------|
-| `HTTP:INVALID:CONTENT_UNEXPECTED` | ~54 | Malformed/unexpected HTTP content in nikto probes |
-| `HTTP:AUDIT:URL` | ~27 | Suspicious URL patterns, directory probing |
-| `HTTP:REMOTE-URL-IN-VAR` | ~27 | Remote file inclusion attempts in URL parameters |
-| `HTTP:DIR:PARAMETER-TRAVERSE-1` | ~2 | Directory traversal (`../`) attempts |
+| `HTTP:AUDIT:URL` | ~700 | Suspicious URL patterns, directory probing |
+| `HTTP:INFO-LEAK:MISS-ETAG` | ~670 | Missing ETag header — info leak probe pattern |
+| `HTTP:STC:SRVRSP:404-NOT-FOUND` | ~650 | Nikto probing non-existent paths for known vulns |
+| `HTTP:EXPLOIT:BRUTE-SEARCH` | ~640 | Brute-force path/file enumeration |
+| `HTTP:CGI:BASH-CODE-INJECTION` | ~30 | ShellShock/bash injection probe |
+| `HTTP:AUDIT:HTTP-VER-1.0` | ~21 | Old HTTP/1.0 requests used in nikto probes |
+| `HTTP:DIR:PARAMETER-TRAVERSE` | ~7 | Directory traversal (`../`) attempts |
+| `HTTP:UNIX-FILE:ETC-PASSWD` | ~1 | `/etc/passwd` file probe |
 
 ### What IDP Detects — hydra (SSH brute force)
 
@@ -43,15 +47,13 @@ drops connections whenever the brute force pattern is detected.
 
 | Signature | Hits (typical) | What it catches |
 |-----------|---------------|-----------------|
-| `HTTP:INVALID:CONTENT_UNEXPECTED` | ~69 | Malformed HTTP in sqlmap probes |
-| `HTTP:AUDIT:URL` | ~42 | Suspicious URL patterns |
-| `HTTP:REMOTE-URL-IN-VAR` | ~27 | Remote file inclusion in parameters |
+| `HTTP:AUDIT:URL` | ~15 | Suspicious URL patterns |
+| `HTTP:INVALID:CONTENT_UNEXPECTED` | ~15 | Malformed HTTP in sqlmap probes |
 | `HTTP:SQL:INJ:SQLMAP-ACTIVITY` | ~15 | **sqlmap tool fingerprint specifically** |
 | `HTTP:SQL:INJ:REQ-VAR-1` | ~10 | SQL injection in request variables |
 | `HTTP:SQL:INJ:GENERIC` | ~8 | Generic SQL injection payloads |
 | `HTTP:SQL:INJ:REQ-VAR-5` | ~8 | SQL injection variant |
 | `HTTP:SQL:INJ:AND-NUMBER-EQUALS` | ~2 | Boolean-based blind SQL injection |
-| `HTTP:DIR:PARAMETER-TRAVERSE-1` | ~2 | Directory traversal attempts |
 
 ---
 
@@ -217,10 +219,14 @@ Example output:
 IDP attack statistics:
 
   Attack name                                  #Hits
-  HTTP:INVALID:CONTENT_UNEXPECTED              54
-  HTTP:AUDIT:URL                               27
-  HTTP:REMOTE-URL-IN-VAR                       27
-  HTTP:DIR:PARAMETER-TRAVERSE-1                2
+  HTTP:AUDIT:URL                               710
+  HTTP:INFO-LEAK:MISS-ETAG                     672
+  HTTP:STC:SRVRSP:404-NOT-FOUND                657
+  HTTP:EXPLOIT:BRUTE-SEARCH                    642
+  HTTP:CGI:BASH-CODE-INJECTION                 30
+  HTTP:AUDIT:HTTP-VER-1.0                      21
+  HTTP:DIR:PARAMETER-TRAVERSE                  7
+  HTTP:UNIX-FILE:ETC-PASSWD                    1
 ```
 
 ---
@@ -249,14 +255,12 @@ Example output:
 IDP attack statistics:
 
   Attack name                                  #Hits
-  HTTP:INVALID:CONTENT_UNEXPECTED              69
-  HTTP:AUDIT:URL                               42
-  HTTP:REMOTE-URL-IN-VAR                       27
+  HTTP:AUDIT:URL                               15
+  HTTP:INVALID:CONTENT_UNEXPECTED              15
   HTTP:SQL:INJ:SQLMAP-ACTIVITY                 15
   HTTP:SQL:INJ:REQ-VAR-1                       10
   HTTP:SQL:INJ:GENERIC                         8
   HTTP:SQL:INJ:REQ-VAR-5                       8
-  HTTP:DIR:PARAMETER-TRAVERSE-1                2
   HTTP:SQL:INJ:AND-NUMBER-EQUALS               2
 ```
 
@@ -379,7 +383,7 @@ set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match 
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match source-address any
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match destination-address any
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match attacks predefined-attack-groups "HTTP - All"
-set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS then action drop-connection
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS then action recommended
 
 # Rule 2: throttle SSH brute force (hydra)
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match from-zone untrust
@@ -398,7 +402,10 @@ set security policies from-zone untrust to-zone trust policy permit-all then per
 
 - **`from-zone untrust / to-zone trust`** — use real zone names, not `any`. Using `any` with
   this detector version can produce "no rules for IPv4" compilation errors.
-- **`drop-connection`** — tears down the TCP session immediately on match.
+- **`recommended` for HTTP, `drop-connection` for SSH** — HTTP uses the per-signature
+  recommended default action. This allows informational/audit traffic through while still
+  dropping connections on actual attack signatures. `drop-connection` is used for SSH brute
+  force because every SSH:BRUTE-LOGIN hit should immediately reset the session.
 - **`HTTP - All`** — covers the full HTTP attack signature set including SQL injection,
   directory traversal, remote file inclusion, and tool fingerprints (nikto, sqlmap).
   On this vSRX, `SCAN - All` does not compile to IPv4 rules (static persistent context limitation).
