@@ -1,4 +1,4 @@
-# SRX IDP Demo — HTTP Attack Detection (nikto + sqlmap)
+# SRX IDP Demo — HTTP and SSH Attack Detection (nikto + sqlmap + hydra)
 
 ## Overview
 
@@ -6,9 +6,9 @@ This demo shows how SRX IDP (Intrusion Detection and Prevention) detects and blo
 HTTP attacks that bypass SCREEN entirely. SCREEN operates at L3/L4 — it sees only packet
 headers. IDP inspects the **payload** inside a valid TCP session.
 
-> **Key message:** A nikto probe or sqlmap payload has a normal TCP handshake, correct packet
-> size, and a valid destination port. SCREEN lets it through. IDP reads the HTTP request,
-> matches attack signatures, and drops the connection.
+> **Key message:** Attacks like nikto, sqlmap, and hydra SSH brute force all have normal TCP
+> handshakes and valid destination ports. SCREEN lets them through. IDP reads the payload or
+> tracks the session pattern, matches attack signatures, and drops the connection.
 
 ### Traffic Path
 
@@ -29,6 +29,15 @@ Kali (192.168.10.2) eth1
 | `HTTP:AUDIT:URL` | ~27 | Suspicious URL patterns, directory probing |
 | `HTTP:REMOTE-URL-IN-VAR` | ~27 | Remote file inclusion attempts in URL parameters |
 | `HTTP:DIR:PARAMETER-TRAVERSE-1` | ~2 | Directory traversal (`../`) attempts |
+
+### What IDP Detects — hydra (SSH brute force)
+
+| Signature | Hits (typical) | What it catches |
+|-----------|---------------|-----------------|
+| `SSH:BRUTE-LOGIN` | ~50+ | Multiple SSH login failures from one source — brute force pattern |
+
+**Effect on attacker:** hydra rate collapses from ~40-60 tries/min to under 10 tries/min as IDP
+drops connections whenever the brute force pattern is detected.
 
 ### What IDP Detects — sqlmap (SQL injection)
 
@@ -285,6 +294,7 @@ If the table is empty after running an attack, check `show log idpd_err` for
 
 - **nikto:** output ends with `ERROR: Error limit (20) reached for host, giving up. Last error: error reading HTTP response`
 - **sqlmap:** output shows repeated `[CRITICAL] connection timed out` and the warning `there is a possibility that the target (or WAF/IPS) is dropping 'suspicious' requests`
+- **hydra:** STATUS lines show try rate collapsing over time (e.g. 27 → 10 → 6 tries/min)
 
 The connection reset/timeout errors confirm IDP is tearing down TCP sessions on signature match.
 
@@ -299,7 +309,50 @@ sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@100.123.12.0 "show security idp att
 
 ---
 
-### Phase 5: The Contrast (Powerful Closer)
+### Phase 5: Scenario 3 — SSH Brute Force Throttled (hydra)
+
+```bash
+bash /root/lab/idp-demo/monitor-idp.sh clear
+
+bash /root/lab/idp-demo/attack-httpbrute.sh
+```
+
+**What to observe:**
+- hydra STATUS lines show the attempt rate collapsing over time:
+  ```
+  [STATUS] 27.00 tries/min, 27 tries in 00:01h ...
+  [STATUS] 10.67 tries/min, 32 tries in 00:03h ...
+  [STATUS]  6.71 tries/min, 47 tries in 00:07h ...
+  ```
+- The monitor shows `SSH:BRUTE-LOGIN` hit count climbing in real time
+- You can stop hydra early with Ctrl+C — the slowdown is the demo
+
+**Show the attack table:**
+```bash
+sshpass -p 'Juniper!1' ssh $SSH_OPTS jcluser@100.123.12.0 "show security idp attack table" 2>/dev/null
+```
+
+Example output:
+```
+IDP attack statistics:
+
+  Attack name                                  #Hits
+  SSH:BRUTE-LOGIN                              51
+```
+
+**Talk track:** "hydra started at 27 attempts per minute. Seven minutes later it's down to
+under 7. IDP is detecting the brute force pattern and dropping connections — the attacker
+hasn't cracked a single credential and is burning time at a fraction of normal speed."
+
+> **Note on SSH - All vs SSH:BRUTE-LOGIN:** Using the full `SSH - All` attack group blocks
+> even the initial SSH handshake by fingerprinting hydra's client banner
+> (`SSH:AUDIT:UNEXPECTED-HEADER`). This is too aggressive for a brute force demo — the attack
+> never even starts. `SSH:BRUTE-LOGIN` is the correct signature: it lets the handshake complete,
+> then detects and throttles the credential flooding.
+
+---
+
+### Phase 6: The Contrast (Powerful Closer)
 
 Remove IDP and re-run to show the difference:
 
@@ -320,13 +373,21 @@ before any data is exchanged."
 The policy applied by `configure-idp.sh`:
 
 ```
-# IDP policy definition
+# Rule 1: block HTTP attacks (nikto, sqlmap, web exploits)
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match from-zone untrust
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match to-zone trust
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match source-address any
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match destination-address any
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match attacks predefined-attack-groups "HTTP - All"
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS then action drop-connection
+
+# Rule 2: throttle SSH brute force (hydra)
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match from-zone untrust
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match to-zone trust
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match source-address any
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match destination-address any
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match attacks predefined-attacks SSH:BRUTE-LOGIN
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE then action drop-connection
 
 # Activate policy and bind to security policy
 set security idp active-policy IDP-DEMO
@@ -337,11 +398,13 @@ set security policies from-zone untrust to-zone trust policy permit-all then per
 
 - **`from-zone untrust / to-zone trust`** — use real zone names, not `any`. Using `any` with
   this detector version can produce "no rules for IPv4" compilation errors.
-- **`drop-connection`** — tears down the TCP session immediately on match, causing the attacker
-  tool to see a connection reset rather than a timeout.
+- **`drop-connection`** — tears down the TCP session immediately on match.
 - **`HTTP - All`** — covers the full HTTP attack signature set including SQL injection,
   directory traversal, remote file inclusion, and tool fingerprints (nikto, sqlmap).
   On this vSRX, `SCAN - All` does not compile to IPv4 rules (static persistent context limitation).
+- **`SSH:BRUTE-LOGIN` not `SSH - All`** — `SSH - All` blocks even the initial SSH handshake by
+  fingerprinting hydra's client banner (`SSH:AUDIT:UNEXPECTED-HEADER`), preventing any brute
+  force from starting. `SSH:BRUTE-LOGIN` targets the credential flooding pattern specifically.
 
 ---
 
@@ -399,5 +462,5 @@ show log idpd_err
 | `remove-idp.sh` | Remove IDP-DEMO policy from vSRX1 |
 | `attack-webscan.sh` | Run nikto web scan from Kali |
 | `attack-sqli.sh` | Run sqlmap SQL injection from Kali |
-| `attack-httpbrute.sh` | Run hydra HTTP brute force from Kali |
+| `attack-httpbrute.sh` | Run hydra SSH brute force from Kali |
 | `monitor-idp.sh` | Poll IDP attack table on vSRX1 in real time |

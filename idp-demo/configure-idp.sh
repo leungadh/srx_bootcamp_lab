@@ -13,6 +13,12 @@ set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match 
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match destination-address any
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS match attacks predefined-attack-groups "HTTP - All"
 set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-HTTP-ATTACKS then action drop-connection
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match from-zone untrust
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match to-zone trust
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match source-address any
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match destination-address any
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE match attacks predefined-attacks SSH:BRUTE-LOGIN
+set security idp idp-policy IDP-DEMO rulebase-ips rule BLOCK-SSH-BRUTE then action drop-connection
 set security idp active-policy IDP-DEMO
 set security policies from-zone untrust to-zone trust policy permit-all then permit application-services idp
 commit
