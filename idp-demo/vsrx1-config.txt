@@ -1,0 +1,82 @@
+set version 24.4R1-S2.9
+set system host-name vSRX
+set system root-authentication encrypted-password "$6$7.vM6zHu$5P060cITCmo6JGNGx3X0MqTSe8h5UZhKfyXWzyudUfczRXkVeOPixx2/KRgiZ3wW0UwxK7ypfdMu03p2mZW2a/"
+set system login user jcluser uid 2000
+set system login user jcluser class super-user
+set system login user jcluser authentication encrypted-password "$6$zWC3lidm$UT9xVilPq8LTKGD4yZHy.Ox/ryGHIXtH2ZnVTALNTrGh2U2oD/B3unBa6qZsj3xoQP7G2W3PtRTXj3CyTE5yW/"
+set system login user labuser uid 2001
+set system login user labuser class super-user
+set system login user labuser authentication encrypted-password "$6$Z6oBnBar$/hC7lXV69RwIr33ljQgxrYb4UbN592MWTtjKgWciBrK.dzyH5svtH8nsQOrDB5z68w12qbTM0Br0I4Ha0LCPQ1"
+set system services netconf ssh
+set system services ssh root-login allow
+set system services rest http port 3000
+set system services rest enable-explorer
+set system services web-management http interface fxp0.0
+set system services web-management https system-generated-certificate
+set system services web-management https interface fxp0.0
+set system syslog file interactive-commands interactive-commands any
+set system syslog file messages any any
+set system syslog file messages authorization info
+set system license autoupdate url https://ae1.juniper.net/junos/key_retrieval
+set services application-identification
+set security log mode event
+set security pki ca-profile ISRG_Root_X1 ca-identity ISRG_Root_X1
+set security pki ca-profile ISRG_Root_X1 pre-load
+set security pki ca-profile Lets_Encrypt ca-identity Lets_Encrypt
+set security pki ca-profile Lets_Encrypt enrollment url https://acme-v02.api.letsencrypt.org/directory
+set security idp idp-policy IDP-POLICY rulebase-ips rule 1 match from-zone untrust
+set security idp idp-policy IDP-POLICY rulebase-ips rule 1 match source-address any
+set security idp idp-policy IDP-POLICY rulebase-ips rule 1 match to-zone trust
+set security idp idp-policy IDP-POLICY rulebase-ips rule 1 match destination-address any
+set security idp idp-policy IDP-POLICY rulebase-ips rule 1 match attacks predefined-attack-groups "HTTP - All"
+set security idp idp-policy IDP-POLICY rulebase-ips rule 1 then action drop-connection
+set security idp active-policy IDP-POLICY
+set security screen ids-option untrust-screen icmp fragment
+set security screen ids-option untrust-screen icmp large
+set security screen ids-option untrust-screen icmp flood threshold 1000
+set security screen ids-option untrust-screen icmp ping-death
+set security screen ids-option untrust-screen ip source-route-option
+set security screen ids-option untrust-screen ip loose-source-route-option
+set security screen ids-option untrust-screen ip strict-source-route-option
+set security screen ids-option untrust-screen ip unknown-protocol
+set security screen ids-option untrust-screen ip block-frag
+set security screen ids-option untrust-screen ip tear-drop
+set security screen ids-option untrust-screen tcp syn-fin
+set security screen ids-option untrust-screen tcp fin-no-ack
+set security screen ids-option untrust-screen tcp tcp-no-flag
+set security screen ids-option untrust-screen tcp port-scan threshold 5000
+set security screen ids-option untrust-screen tcp syn-flood alarm-threshold 1024
+set security screen ids-option untrust-screen tcp syn-flood attack-threshold 200
+set security screen ids-option untrust-screen tcp syn-flood source-threshold 1024
+set security screen ids-option untrust-screen tcp syn-flood destination-threshold 2048
+set security screen ids-option untrust-screen tcp syn-flood queue-size 2000
+set security screen ids-option untrust-screen tcp syn-flood timeout 20
+set security screen ids-option untrust-screen tcp land
+set security screen ids-option untrust-screen tcp winnuke
+set security screen ids-option untrust-screen udp flood threshold 1000
+set security screen ids-option untrust-screen udp port-scan threshold 5000
+set security policies from-zone trust to-zone trust policy default-permit match source-address any
+set security policies from-zone trust to-zone trust policy default-permit match destination-address any
+set security policies from-zone trust to-zone trust policy default-permit match application any
+set security policies from-zone trust to-zone trust policy default-permit then permit
+set security policies from-zone trust to-zone untrust policy default-permit match source-address any
+set security policies from-zone trust to-zone untrust policy default-permit match destination-address any
+set security policies from-zone trust to-zone untrust policy default-permit match application any
+set security policies from-zone trust to-zone untrust policy default-permit then permit
+set security policies from-zone trust to-zone untrust policy permit-all match source-address any
+set security policies from-zone trust to-zone untrust policy permit-all match destination-address any
+set security policies from-zone trust to-zone untrust policy permit-all match application any
+set security policies from-zone trust to-zone untrust policy permit-all then permit
+set security policies from-zone untrust to-zone trust policy permit-all match source-address any
+set security policies from-zone untrust to-zone trust policy permit-all match destination-address any
+set security policies from-zone untrust to-zone trust policy permit-all match application any
+set security policies from-zone untrust to-zone trust policy permit-all then permit application-services idp
+set security policies pre-id-default-policy then log session-close
+set security zones security-zone trust tcp-rst
+set security zones security-zone trust interfaces ge-0/0/0.0
+set security zones security-zone untrust screen untrust-screen
+set security zones security-zone untrust interfaces ge-0/0/1.0
+set interfaces ge-0/0/0 unit 0 family inet address 10.0.0.1/30
+set interfaces ge-0/0/1 unit 0 family inet address 192.168.10.1/30
+set interfaces fxp0 unit 0 family inet dhcp
+set routing-options static route 192.168.20.0/30 next-hop 10.0.0.2
