@@ -306,6 +306,8 @@ show interfaces st0 terse
 | File | Purpose |
 |---|---|
 | `DEMO.md` | This guide |
+| `vsrx1-config.txt` | Full vSRX1 config snapshot (set format) with VPN active |
+| `vsrx2-config.txt` | Full vSRX2 config snapshot (set format) with VPN active |
 | `configure-vpn.sh` | Push VPN config to vSRX1 and vSRX2 |
 | `remove-vpn.sh` | Remove VPN, restore direct routing |
 | `verify-vpn.sh` | Show tunnel status, stats, and ping test |
