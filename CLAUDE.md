@@ -8,6 +8,8 @@ This is a Juniper SRX security lab workspace used to demo features including SCR
 
 All four demos are implemented and tested. See `README.md` for the full lab guide.
 
+Five hands-on exercises are in the `Exercise/` folder — see `Exercise/README.md` for the index.
+
 ## Network Topology
 
 ```
@@ -83,3 +85,13 @@ exit
 | IDP | `idp-demo/configure-idp.sh` | `idp-demo/attack-*.sh` | `idp-demo/remove-idp.sh` |
 | VPN | `vpn-demo/configure-vpn.sh` | `vpn-demo/verify-vpn.sh` | `vpn-demo/remove-vpn.sh` |
 | URL Filter | `url-filter-demo/configure-url-filter.sh` | `url-filter-demo/run-demo.sh` | `url-filter-demo/remove-url-filter.sh` |
+
+## Exercises
+
+| # | File | Topic |
+|---|------|-------|
+| 1 | `Exercise/Exercise_1.md` | Base network configuration — apply base configs, configure Linux interfaces, verify connectivity |
+| 2 | `Exercise/Exercise_2.md` | SCREEN — enhanced IDS profile, five attack scenarios, SCREEN counter observation |
+| 3 | `Exercise/Exercise_3.md` | IDP — template install, before/after contrast, nikto / sqlmap / hydra blocking |
+| 4 | `Exercise/Exercise_4.md` | IPsec VPN — plaintext vs ESP capture, IKEv2 tunnel build and verification |
+| 5 | `Exercise/Exercise_5.md` | URL Filtering — EWF UTM config on vSRX2, category blocking, UTM statistics |
